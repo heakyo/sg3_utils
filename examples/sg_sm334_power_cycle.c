@@ -268,7 +268,7 @@ int main_test(int argc, char * argv[])
 }
 
 #define CDB_SIZE 10
-int sg3_pwr_cycle(int sg_fd, bool on_off)
+int sg3_pwr_cycle(int sg_fd, int on_off)
 {
     struct sg_io_hdr io_hdr;
 	char switch_cmd = 0;
@@ -304,117 +304,32 @@ int sg3_pwr_cycle(int sg_fd, bool on_off)
 
 int main(int argc, char * argv[])
 {
-    int sg_fd, fd, res, j, m, dxfer_len;
-    unsigned int k, num;
-    int do_async = 0;
-    int do_help = 0;
-    int blk_size = 512;
-    int elem_size = A_PRIME;
-    int count = 0;
-    char * sg_file_name = 0;
-    char * out_file_name = 0;
-    unsigned char * buffp;
+    int sg_fd;
+	int switch = FALSE;
 
-    for (j = 1; j < argc; ++j) {
-        if (0 == strcmp("-a", argv[j]))
-            do_async = 1;
-        else if (0 == strncmp("-b=", argv[j], 3)) {
-            m = 3;
-            num = sscanf(argv[j] + m, "%d", &blk_size);
-            if ((1 != num) || (blk_size <= 0)) {
-                printf("Couldn't decode number after '-b' switch\n");
-                sg_file_name = 0;
-                break;
-            }
-        } else if (0 == strncmp("-c=", argv[j], 3)) {
-            m = 3;
-            num = sscanf(argv[j] + m, "%d", &count);
-            if (1 != num) {
-                printf("Couldn't decode number after '-c' switch\n");
-                sg_file_name = 0;
-                break;
-            }
-        } else if (0 == strncmp("-e=", argv[j], 3)) {
-            m = 3;
-            num = sscanf(argv[j] + m, "%d", &elem_size);
-            if (1 != num) {
-                printf("Couldn't decode number after '-e' switch\n");
-                sg_file_name = 0;
-                break;
-            }
-        } else if (0 == strcmp("-h", argv[j]))
-            do_help = 1;
-        else if (*argv[j] == '-') {
-            printf("Unrecognized switch: %s\n", argv[j]);
-            sg_file_name = 0;
-            break;
-        } else if (NULL == sg_file_name)
-            sg_file_name = argv[j];
-        else
-            out_file_name = argv[j];
-    }
-    if (do_help) {
-        usage();
-        return 0;
-    }
-    if (NULL == sg_file_name) {
-        printf(">>> need sg node name (e.g. /dev/sg3)\n\n");
-        usage();
+	if (argc > 2) {
+		perror(ME "argc can not be greater than two");
         return 1;
-    }
-    if (NULL == out_file_name) {
-        printf(">>> need out filename (to place what is fetched by READ\n\n");
-        usage();
-        return 1;
-    }
-    if (0 == count) {
-        printf(">>> need count of blocks to READ\n\n");
-        usage();
-        return 1;
-    }
+	}
 
-    if (do_async)
-        sg_fd = open(sg_file_name, O_RDWR);
-    else
-        sg_fd = open(sg_file_name, O_RDONLY);
+	sscanf(argv[1], "%d", &switch);
+
+    sg_fd = open(sg_file_name, O_RDWR);
     if (sg_fd < 0) {
         perror(ME "sg device node open error");
         return 1;
     }
-    /* Don't worry, being very careful not to write to a none-sg file ... */
-    res = ioctl(sg_fd, SG_GET_VERSION_NUM, &k);
-    if ((res < 0) || (k < 30000)) {
-        printf(ME "not a sg device, or driver prior to 3.x\n");
-        return 1;
+
+    if (sg3_pwr_cycle(sg_fd, switch)) {
+            perror(ME "output write failed");
     }
-    fd = open(out_file_name, O_WRONLY | O_CREAT, 0666);
-    if (fd < 0) {
-        perror(ME "output file open error");
-        return 1;
-    }
-    dxfer_len = count * blk_size;
-    buffp = (unsigned char *)malloc(dxfer_len);
-    if (buffp) {
-        if (0 == sg_read(sg_fd, buffp, count, 0, blk_size, elem_size,
-                         do_async)) {
-            if (write(fd, buffp, dxfer_len) < 0)
-                perror(ME "output write failed");
-        }
-        free(buffp);
-    } else
-        fprintf(stderr, "user space malloc for %d bytes failed\n",
-                dxfer_len);
-    res = close(fd);
-    if (res < 0) {
-        perror(ME "output file close error");
-        close(sg_fd);
-        return 1;
-    }
+
     res = close(sg_fd);
     if (res < 0) {
         perror(ME "sg device close error");
         return 1;
     }
+	
     return 0;
 }
 
