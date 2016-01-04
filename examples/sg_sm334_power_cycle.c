@@ -306,13 +306,18 @@ int main(int argc, char * argv[])
 {
     int sg_fd;
 	int switch = FALSE;
+	char * sg_file_name = NULL;
 
-	if (argc > 2) {
+	if (argc > 3) {
 		perror(ME "argc can not be greater than two");
         return 1;
 	}
 
 	sscanf(argv[1], "%d", &switch);
+
+	sg_file_name = argv[2];
+
+	printf("switch:%d, sg_file_name:%s\n", switch, sg_file_name);
 
     sg_fd = open(sg_file_name, O_RDWR);
     if (sg_fd < 0) {
