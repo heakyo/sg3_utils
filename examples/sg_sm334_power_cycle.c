@@ -268,7 +268,7 @@ int main_test(int argc, char * argv[])
 }
 
 #define CDB_SIZE 10
-int sg3_pwr_cycle(int sg_fd, int on_off)
+static int sg3_pwr_cycle(int sg_fd, int on_off)
 {
     struct sg_io_hdr io_hdr;
 	char switch_cmd = 0;
@@ -301,37 +301,37 @@ int sg3_pwr_cycle(int sg_fd, int on_off)
     return 0;
 }
 
-
 int main(int argc, char * argv[])
 {
     int sg_fd;
-	int switch = FALSE;
-	char * sg_file_name = NULL;
+    int switch_on_off = 0;
+    char * sg_file_name = NULL;
+    int res = 0;
 
-	if (argc > 3) {
-		perror(ME "argc can not be greater than two");
-        return 1;
-	}
-
-	sscanf(argv[1], "%d", &switch);
-
-	sg_file_name = argv[2];
-
-	printf("switch:%d, sg_file_name:%s\n", switch, sg_file_name);
-
-    sg_fd = open(sg_file_name, O_RDWR);
-    if (sg_fd < 0) {
-        perror(ME "sg device node open error");
+    if (argc < 3) {
+	perror("argc can not be greater than two");
         return 1;
     }
 
-    if (sg3_pwr_cycle(sg_fd, switch)) {
-            perror(ME "output write failed");
+    sscanf(argv[1], "%d", &switch_on_off);
+
+    sg_file_name = argv[2];
+
+    printf("switch:%d, sg_file_name:%s\n", switch_on_off, sg_file_name);
+
+    sg_fd = open(sg_file_name, O_RDWR);
+    if (sg_fd < 0) {
+        perror("sg device node open error");
+        return 1;
+    }
+
+    if (sg3_pwr_cycle(sg_fd, switch_on_off)) {
+            perror("output write failed");
     }
 
     res = close(sg_fd);
     if (res < 0) {
-        perror(ME "sg device close error");
+        perror("sg device close error");
         return 1;
     }
 	
